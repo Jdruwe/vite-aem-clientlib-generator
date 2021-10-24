@@ -28,28 +28,22 @@ USAGE
 <!-- usagestop -->
 # Commands
 <!-- commands -->
-* [`vite-aem-lib hello [FILE]`](#vite-aem-lib-hello-file)
+* [`vite-aem-lib generate [MANIFEST]`](#vite-aem-lib-generate-manifest)
 * [`vite-aem-lib help [COMMAND]`](#vite-aem-lib-help-command)
 
-## `vite-aem-lib hello [FILE]`
+## `vite-aem-lib generate [MANIFEST]`
 
-describe the command here
+Generate the AEM clientlib
 
 ```
 USAGE
-  $ vite-aem-lib hello [FILE]
+  $ vite-aem-lib generate [MANIFEST]
 
-OPTIONS
-  -f, --force
-  -h, --help       show CLI help
-  -n, --name=name  name to print
-
-EXAMPLE
-  $ vite-aem-lib hello
-  hello world from ./src/hello.ts!
+ARGUMENTS
+  MANIFEST  [default: manifest.json] Location of the manifest file,
 ```
 
-_See code: [src/commands/hello.ts](https://github.com/Jdruwe/vite-aem-clientlib-generator/blob/v0.0.0/src/commands/hello.ts)_
+_See code: [src/commands/generate.ts](https://github.com/Jdruwe/vite-aem-clientlib-generator/blob/v0.0.0/src/commands/generate.ts)_
 
 ## `vite-aem-lib help [COMMAND]`
 
