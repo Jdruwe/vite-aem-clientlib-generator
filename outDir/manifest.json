@@ -1,0 +1,42 @@
+{
+  "src/main.ts": {
+    "file": "etc.clientlibs/project/clientlibs/demo-clientlib/resources/js/app.eb0c5b15.js",
+    "src": "src/main.ts",
+    "isEntry": true,
+    "imports": [
+      "_vendor.3f6b5a88.js"
+    ],
+    "dynamicImports": [
+      "src/other-module.ts"
+    ],
+    "css": [
+      "etc.clientlibs/project/clientlibs/demo-clientlib/resources/css/app.ac1629a2.css"
+    ]
+  },
+  "_vendor.3f6b5a88.js": {
+    "file": "etc.clientlibs/project/clientlibs/demo-clientlib/resources/chunks/vendor.3f6b5a88.js"
+  },
+  "src/other-module.ts": {
+    "file": "etc.clientlibs/project/clientlibs/demo-clientlib/resources/chunks/other-module.978edf84.js",
+    "src": "src/other-module.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "src/main.ts",
+      "_vendor.3f6b5a88.js"
+    ],
+    "dynamicImports": [
+      "src/nested-module.ts"
+    ],
+    "css": [
+      "etc.clientlibs/project/clientlibs/demo-clientlib/resources/css/other-module.cd49c0e7.css"
+    ]
+  },
+  "src/nested-module.ts": {
+    "file": "etc.clientlibs/project/clientlibs/demo-clientlib/resources/chunks/nested-module.8bc86e77.js",
+    "src": "src/nested-module.ts",
+    "isDynamicEntry": true,
+    "css": [
+      "etc.clientlibs/project/clientlibs/demo-clientlib/resources/css/nested-module.b3aa642e.css"
+    ]
+  }
+}
