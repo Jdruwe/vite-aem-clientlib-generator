@@ -1,164 +1,164 @@
 import {Command} from '@oclif/command'
-import * as fs from 'fs'
+import * as fse from 'fs-extra'
 import * as path from 'path'
+import {getConfig, isValidConfig, Library} from '../config'
+import {isExistingDir, toPublicPath} from '../utils'
+import {Builder} from 'xml2js'
+
+interface Manifest {
+  [key: string]: Chunk;
+}
 
 interface Chunk {
   isEntry?: boolean;
   imports?: string[];
   css?: string [];
-  file: string
+  file: string;
 }
 
-interface Manifest {
-  [key: string]: Chunk
+interface Sources {
+  scripts: string[];
+  preloads: string[];
+  stylesheets: string[];
 }
-
-interface HtmlTagDescriptor {
-  tag: string
-  attrs?: Record<string, string | boolean | undefined>
-}
-
-const externalRE = /^(https?:)?\/\//
 
 export default class Generate extends Command {
   static description = 'Generate the AEM clientlib'
 
-  static args = [
-    {
-      name: 'manifest',
-      required: false,
-      description: 'Location of the manifest file',
-      default: 'manifest.json',
-    },
-  ]
-
-  //TODO: split into methods
   async run() {
-    const manifest = Generate.getManifest()
-    const entry = Generate.getEntry(manifest)
-    if (entry) {
-      const imports = this.getImportedChunks(manifest, entry)
-      const tags = [Generate.toScriptTag(entry), ...imports.map(Generate.toPreloadTag)]
-      tags.push(...this.getCssTagsForChunk(manifest, entry))
-      const serializedTags = this.serializeTags(tags)
-      console.log(serializedTags)
+    const config = this.getConfig()
+    this.processLibs(config.libs)
+  }
+
+  private getConfig() {
+    const config = getConfig()
+    if (config) {
+      if (isValidConfig(config)) {
+        return config
+      } else {
+        this.error('Invalid configuration file')
+      }
     } else {
-      this.error('No entry found', {exit: 2, suggestions: ['Make sure the manifest.json file contains an entry.']})
+      this.error('No configuration file found', {exit: 2, suggestions: ['Make sure a vite.lib.config.js file exists']})
     }
   }
 
-  //TODO: error handling?
-  private static getManifest(): Manifest {
-    // https://stackoverflow.com/questions/32705219/nodejs-accessing-file-with-relative-path
-    // TODO: the next line probably needs updating once finished
-    const jsonPath = path.join(__dirname, 'manifest.json')
-    const jsonString = fs.readFileSync(jsonPath, 'utf8')
-    return JSON.parse(jsonString)
+  private processLibs(libs: Library[]) {
+    libs.forEach(lib => {
+      if (isExistingDir(lib.resourcesDir)) {
+        const sources = this.getSources(lib)
+        this.createClientlib(lib, sources)
+        this.log('vite-aem-clientlib-generator: clientlib generated')
+      } else {
+        this.error('Resources directory not found: ' + lib.resourcesDir)
+      }
+    })
   }
 
-  private static getEntry(manifest: Manifest): Chunk | undefined {
-    return Object.values(manifest)
-      .find(chunk => this.isEntry(chunk))
+  private getSources(lib: Library): Sources {
+    const manifest = this.getManifest(lib.manifest)
+    const entry = this.getEntry(manifest)
+    return {
+      scripts: [toPublicPath(entry.file)],
+      preloads: this.getImportedFiles(manifest, entry),
+      stylesheets: this.getCssFiles(manifest, entry),
+    }
+  }
+
+  private getManifest(manifest: string): Manifest {
+    try {
+      return fse.readJsonSync(manifest)
+    } catch (e) {
+      this.error('Could not read manifest.json: ' + manifest)
+    }
+  }
+
+  private getEntry(manifest: Manifest): Chunk {
+    const entry = Object.values(manifest)
+      .find(chunk => Generate.isEntry(chunk))
+
+    if (entry) {
+      return entry
+    } else {
+      this.error('No manifest entry found')
+    }
   }
 
   private static isEntry(chunk: Chunk): boolean {
     return !!(chunk.isEntry && chunk.file)
   }
 
-  private getImportedChunks(manifest: Manifest, chunk: Chunk, seen: Set<string> = new Set()) {
-    const chunks: Chunk[] = []
+  private getImportedFiles(manifest: Manifest, chunk: Chunk, seen: Set<string> = new Set()): string[] {
+    const files: string[] = []
     chunk.imports?.forEach((file) => {
       const importChunk = manifest[file]
       if (!seen.has(file)) {
         seen.add(file)
-        chunks.push(...this.getImportedChunks(manifest, importChunk, seen))
-        chunks.push(importChunk)
+        files.push(...this.getImportedFiles(manifest, importChunk, seen))
+        files.push(toPublicPath(importChunk.file))
       }
     })
-    return chunks
+    return files
   }
 
-  private getCssTagsForChunk(
+  private getCssFiles(
     manifest: Manifest,
     chunk: Chunk,
     seen: Set<string> = new Set(),
     analyzedChunk: Map<Chunk, number> = new Map(),
-  ): HtmlTagDescriptor[] {
-    const tags: HtmlTagDescriptor[] = []
+  ): string[] {
+    const files: string[] = []
     if (!analyzedChunk.has(chunk)) {
       analyzedChunk.set(chunk, 1)
       chunk.imports?.forEach((file) => {
         const importChunk = manifest[file]
-        tags.push(...this.getCssTagsForChunk(manifest, importChunk, seen, analyzedChunk))
+        files.push(...this.getCssFiles(manifest, importChunk, seen, analyzedChunk))
       })
     }
 
     chunk.css?.forEach((file) => {
       if (!seen.has(file)) {
         seen.add(file)
-        tags.push(Generate.toStyleTag(file))
+        files.push(toPublicPath(file))
       }
     })
 
-    return tags
+    return files
   }
 
-  private static toScriptTag(chunk: Chunk): HtmlTagDescriptor {
-    return {
-      tag: 'script',
-      attrs: {
-        type: 'module',
-        crossorigin: true,
-        src: Generate.toPublicPath(chunk.file),
-      },
-    }
-  }
+  private createClientlib(lib: Library, sources: Sources) {
+    try {
 
-  private static toPreloadTag(chunk: Chunk): HtmlTagDescriptor {
-    return {
-      tag: 'link',
-      attrs: {
-        rel: 'modulepreload',
-        href: Generate.toPublicPath(chunk.file),
-      },
-    }
-  }
+      const clientlibResourcesDir = path.resolve(lib.clientlibDir, 'resources')
+      const contentXmlPath = path.resolve(lib.clientlibDir, '.content.xml')
 
-  private static toStyleTag(file: string): HtmlTagDescriptor {
-    return {
-      tag: 'link',
-      attrs: {
-        rel: 'stylesheet',
-        href: Generate.toPublicPath(file),
-      },
-    }
-  }
+      fse.mkdirSync(clientlibResourcesDir, {recursive: true})
+      fse.emptyDirSync(clientlibResourcesDir)
+      fse.copySync(lib.resourcesDir, clientlibResourcesDir)
 
-  private static toPublicPath(file: string) {
-    return Generate.isExternalUrl(file) ? file : `/${file}`
-  }
-
-  private static isExternalUrl(url: string): boolean {
-    return externalRE.test(url)
-  }
-
-  private serializeTags(tags: HtmlTagDescriptor[]): string {
-    return tags.map((tag) => `${Generate.serializeTag(tag)}\n`).join('')
-  }
-
-  private static serializeTag({tag, attrs}: HtmlTagDescriptor): string {
-    return `<${tag}${Generate.serializeAttrs(attrs)}>`
-  }
-
-  private static serializeAttrs(attrs: HtmlTagDescriptor['attrs']): string {
-    let res = ''
-    for (const key in attrs) {
-      if (typeof attrs[key] === 'boolean') {
-        res += attrs[key] ? ` ${key}` : ``
-      } else {
-        res += ` ${key}=${JSON.stringify(attrs[key])}`
+      const xml = {
+        'jcr:root': {
+          '$': {
+            'xmlns:cq': 'http://www.day.com/jcr/cq/1.0',
+            'xmlns:jcr': 'http://www.jcp.org/jcr/1.0',
+            'jcr:primaryType': 'cq:ClientLibraryFolder',
+            categories: `[${lib.categories.join(',')}]`,
+            cssProcessor: '[default:none,min:none]',
+            jsProcessor: '[default:none,min:none]',
+            allowProxy: '{Boolean}true',
+            scripts: `[${sources.scripts.join(',')}]`,
+            preloads: `[${sources.preloads.join(',')}]`,
+            stylesheets: `[${sources.stylesheets.join(',')}]`,
+            ...lib.properties,
+          },
+        },
       }
+
+      const builder = new Builder()
+      fse.writeFileSync(contentXmlPath, builder.buildObject(xml))
+
+    } catch (e) {
+      this.error('Something went wrong while creating the clientlib: ' + e.message)
     }
-    return res
   }
 }

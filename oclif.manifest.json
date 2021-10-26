@@ -1,1 +1,1 @@
-{"version":"0.0.0","commands":{"generate":{"id":"generate","description":"Generate the AEM clientlib","pluginName":"vite-aem-clientlib-generator","pluginType":"core","aliases":[],"flags":{},"args":[{"name":"manifest","description":"Location of the manifest file, ","required":false,"default":"manifest.json"}]}}}
+{"version":"0.0.0","commands":{"generate":{"id":"generate","description":"Generate the AEM clientlib","pluginName":"vite-aem-clientlib-generator","pluginType":"core","aliases":[],"flags":{},"args":[]}}}
