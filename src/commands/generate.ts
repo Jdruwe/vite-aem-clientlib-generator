@@ -48,7 +48,7 @@ export default class Generate extends Command {
       if (isExistingDir(lib.resourcesDir)) {
         const sources = this.getSources(lib)
         this.createClientlib(lib, sources)
-        this.log('vite-aem-clientlib-generator: clientlib generated')
+        this.log(`vite-aem-clientlib-generator: clientlib with categories '${lib.categories}' has been generated`)
       } else {
         this.error('Resources directory not found: ' + lib.resourcesDir)
       }
