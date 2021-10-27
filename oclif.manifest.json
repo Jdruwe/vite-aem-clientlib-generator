@@ -1,0 +1,1 @@
+{"version":"0.0.0","commands":{"generate":{"id":"generate","description":"Generate the AEM clientlib","pluginName":"@jeroendruwe/vite-aem-clientlib-generator","pluginType":"core","aliases":[],"flags":{},"args":[]}}}
