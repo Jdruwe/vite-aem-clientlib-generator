@@ -80,9 +80,9 @@ Place a `vite.lib.config.js` configuration file next to where you run the `gener
 - manifest
   - location of the Vite generated manifest.json file
 - resourcesDir
-  - location where Vite generated your output
+  - location of the Vite generated output
 - clientlibDir
-  - location where the clientlib will be generated
+  - location of the to be generated clientlib
 - categories
   - will be copied over to the clientlib categories property
 
